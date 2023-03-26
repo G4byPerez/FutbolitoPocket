@@ -1,18 +1,20 @@
 package com.gabyperez.futbolitopocket
 
+import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
+import android.graphics.*
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.DisplayMetrics
 import android.util.Log
 import android.view.View
+import android.view.WindowManager
 
+@Suppress("DEPRECATION")
 class MainActivity : AppCompatActivity(), SensorEventListener {
     private val gravity = FloatArray(3)
     private  val linearAcceleration = FloatArray(3)
@@ -21,6 +23,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private lateinit var sensorManager: SensorManager
     private var myLight: Sensor? = null
 
+    //private var screenWidth: Int = 0
+    //private var screenHeight: Int = 0
 
     private val sensorEventListener : SensorEventListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent?) {
@@ -37,13 +41,12 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             linearAcceleration[1] = event.values[1] - gravity[1]
             linearAcceleration[2] = event.values[2] - gravity[2]
 
-            Log.d("Acceleration", "x=${linearAcceleration[0]} ; y=${linearAcceleration[1]} ; " +
-                    "z=${linearAcceleration[2]}")
+            //Log.d("Acceleration", "x=${linearAcceleration[0]} ; y=${linearAcceleration[1]} ; " + "z=${linearAcceleration[2]}")
 
         }
 
         override fun onAccuracyChanged(p0: Sensor?, p1: Int) {
-            //TODO("Not yet implemented")
+
         }
 
     }
@@ -53,7 +56,18 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        myDrawView = MyDrawView(this)
+        //Hide action bar
+        supportActionBar?.hide()
+
+        //Screen Size
+        val windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val display = windowManager.defaultDisplay
+        val metrics = DisplayMetrics()
+        display.getMetrics(metrics)
+        //screenWidth = metrics.widthPixels
+        //screenHeight = metrics.heightPixels
+
+        myDrawView = MyDrawView(this, metrics.widthPixels, metrics.heightPixels)
 
         setContentView(myDrawView)
 
@@ -89,7 +103,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
             }
         }
 
-        Log.i("MySensors", mySensor.toString())
+        //Log.i("MySensors", mySensor.toString())
 
         myLight = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
 
@@ -101,8 +115,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         super.onResume()
         myLight?.also { light ->
             sensorManager.registerListener(this, light, SensorManager.SENSOR_DELAY_NORMAL)
-            /*sensorManager.registerListener(sensorEventListener,
-                light, SensorManager.SENSOR_DELAY_NORMAL)*/
         }
         sensorAccelerometer?.also {
             sensorManager.registerListener(myDrawView,it,
@@ -118,9 +130,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onSensorChanged(p0: SensorEvent?) {
         val lux =  p0!!.values[0]
-        //(findViewById(R.id.txt) as TextView).text = lux.toString()
         Log.i("LUX", lux.toString())
-
     }
 
     override fun onAccuracyChanged(p0: Sensor?, p1: Int) {
@@ -134,12 +144,18 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
 }
 
-class  MyDrawView (ctx: Context) : View(ctx), SensorEventListener {
+@SuppressLint("ViewConstructor")
+class  MyDrawView (ctx: Context, screenWidth: Int, screenHeight: Int) : View(ctx), SensorEventListener {
 
-    private var xPos = 0f
+    private var xPos = screenWidth/2f
+    private var yPos = screenHeight/2f
+
+    private var width = screenWidth
+    private var height = screenHeight
+
     private var xAcceleration: Float = 0f
     private var xVelocity: Float = 0.0f
-    private var yPos = 0f
+
     private var yAcceleration: Float = 0f
     private var yVelocity: Float = 0.0f
 
@@ -147,15 +163,19 @@ class  MyDrawView (ctx: Context) : View(ctx), SensorEventListener {
     private var gravity = FloatArray(3)
     private  var linearAcceleration = FloatArray(3)
 
+    private val img: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.campo)
+    //private var rect = Rect(0, 0, screenWidth, screenHeight)
+
     init {
-        brush.color = Color.RED
+        brush.color = Color.DKGRAY
     }
 
+    @SuppressLint("DrawAllocation")
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
-        //canvas!!.drawLine(200F, 200F, 500F, 200F, brush)
-        canvas!!.drawCircle(xPos, yPos,50.0F, brush)
-        //canvas.drawText("Draw Text",400F,400F,brush)
+
+        canvas!!.drawBitmap(img, null, Rect(0, 0, width, height), null)
+        canvas.drawCircle(xPos, yPos,55.0F, brush)
 
         invalidate()
     }
@@ -174,8 +194,7 @@ class  MyDrawView (ctx: Context) : View(ctx), SensorEventListener {
         linearAcceleration[1] = event.values[1] - gravity[1]    //y
         linearAcceleration[2] = event.values[2] - gravity[2]   //z
 
-        Log.d("Acceleration", "x=${linearAcceleration[0]} ; y=${linearAcceleration[1]} ; " +
-                "z=${linearAcceleration[2]}")
+        //Log.d("Acceleration", "x=${linearAcceleration[0]} ; y=${linearAcceleration[1]} ; " + "z=${linearAcceleration[2]}")
 
         moveBall(linearAcceleration[0], linearAcceleration[1] * -1)
 
@@ -186,17 +205,24 @@ class  MyDrawView (ctx: Context) : View(ctx), SensorEventListener {
         yAcceleration = yOrientation
         updateX()
         updateY()
-
     }
 
     private fun updateX() {
-        xVelocity -= xAcceleration * 0.3f
-        xPos += xVelocity
+        if (xPos < 100 || xPos > width - 100f) {
+            xPos -= xVelocity
+        } else {
+            xVelocity -= xAcceleration * 2f
+            xPos += xVelocity
+        }
     }
 
     private fun updateY() {
-        yVelocity -= yAcceleration * 0.3f
-        yPos += yVelocity
+        if (yPos < 100 || yPos > height - 100f) {
+            yPos -= yVelocity
+        } else {
+            yVelocity -= yAcceleration * 2f
+            yPos += yVelocity
+        }
     }
 
     override fun onAccuracyChanged(p0: Sensor?, p1: Int) {
