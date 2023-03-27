@@ -23,9 +23,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private lateinit var sensorManager: SensorManager
     private var myLight: Sensor? = null
 
-    //private var screenWidth: Int = 0
-    //private var screenHeight: Int = 0
-
     private val sensorEventListener : SensorEventListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent?) {
 
@@ -64,8 +61,6 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         val display = windowManager.defaultDisplay
         val metrics = DisplayMetrics()
         display.getMetrics(metrics)
-        //screenWidth = metrics.widthPixels
-        //screenHeight = metrics.heightPixels
 
         myDrawView = MyDrawView(this, metrics.widthPixels, metrics.heightPixels)
 
@@ -160,14 +155,20 @@ class  MyDrawView (ctx: Context, screenWidth: Int, screenHeight: Int) : View(ctx
     private var yVelocity: Float = 0.0f
 
     private var brush = Paint()
+    private var text = Paint()
+
     private var gravity = FloatArray(3)
     private  var linearAcceleration = FloatArray(3)
 
+    private var score1 = 0
+    private var score2 = 0
+
     private val img: Bitmap = BitmapFactory.decodeResource(resources, R.drawable.campo)
-    //private var rect = Rect(0, 0, screenWidth, screenHeight)
 
     init {
         brush.color = Color.DKGRAY
+        text.color = Color.BLACK
+        text.textSize = 170f
     }
 
     @SuppressLint("DrawAllocation")
@@ -176,6 +177,8 @@ class  MyDrawView (ctx: Context, screenWidth: Int, screenHeight: Int) : View(ctx
 
         canvas!!.drawBitmap(img, null, Rect(0, 0, width, height), null)
         canvas.drawCircle(xPos, yPos,55.0F, brush)
+        canvas.drawText("$score1", width / 2f - 50f, 180f, text)
+        canvas.drawText("$score2", width / 2f - 50f, height - 60f , text)
 
         invalidate()
     }
@@ -191,7 +194,7 @@ class  MyDrawView (ctx: Context, screenWidth: Int, screenHeight: Int) : View(ctx
 
         // Remove the gravity contribution with the high-pass filter.
         linearAcceleration[0] = event.values[0] - gravity[0]   //x
-        linearAcceleration[1] = event.values[1] - gravity[1]    //y
+        linearAcceleration[1] = event.values[1] - gravity[1]   //y
         linearAcceleration[2] = event.values[2] - gravity[2]   //z
 
         //Log.d("Acceleration", "x=${linearAcceleration[0]} ; y=${linearAcceleration[1]} ; " + "z=${linearAcceleration[2]}")
@@ -205,6 +208,7 @@ class  MyDrawView (ctx: Context, screenWidth: Int, screenHeight: Int) : View(ctx
         yAcceleration = yOrientation
         updateX()
         updateY()
+        updateScore()
     }
 
     private fun updateX() {
@@ -222,6 +226,20 @@ class  MyDrawView (ctx: Context, screenWidth: Int, screenHeight: Int) : View(ctx
         } else {
             yVelocity -= yAcceleration * 2f
             yPos += yVelocity
+        }
+    }
+
+    private fun updateScore() {
+        if (xPos >= width / 2f - 100 && xPos <= width / 2f + 100) {
+            if (yPos <= 180) {
+                score1++
+                xPos = width / 2f
+                yPos = height / 2f
+            } else if (yPos >= height - 180) {
+                score2++
+                xPos = width / 2f
+                yPos = height / 2f
+            }
         }
     }
 
